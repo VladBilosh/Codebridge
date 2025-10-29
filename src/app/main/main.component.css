@@ -2,100 +2,261 @@
   max-width: 1200px;
   margin: 0 auto;
   padding: 40px 20px;
+  min-height: 60vh;
 }
 
 .filter-section {
-  margin-bottom: 32px;
+  margin-bottom: 40px;
 }
 
 .filter-heading {
-  margin: 0 0 16px 0;
-  font-size: 22px;
-  font-weight: 600;
-  color: #333;
+  margin: 0 0 20px 0;
+  font-size: 28px;
+  font-weight: 700;
+  color: #1a237e;
+  background: linear-gradient(135deg, #1a237e, #4a148c);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .search-container {
   position: relative;
   display: flex;
   align-items: center;
+  max-width: 600px;
+  margin-bottom: 12px;
 }
 
 .search-icon {
   position: absolute;
   left: 16px;
-  color: #999;
+  color: #5c6bc0;
   pointer-events: none;
+  z-index: 2;
 }
 
 .search-input {
   width: 100%;
-  padding: 12px 16px 12px 48px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  font-size: 15px;
+  padding: 16px 52px 16px 48px;
+  border: 2px solid #e8eaf6;
+  border-radius: 12px;
+  font-size: 16px;
   outline: none;
-  transition: border-color 0.2s;
+  transition: all 0.3s ease;
+  background: #fafafa;
+  font-family: inherit;
 }
 
 .search-input:focus {
-  border-color: #999;
+  border-color: #5c6bc0;
+  background: white;
+  box-shadow: 0 4px 12px rgba(92, 107, 192, 0.2);
+  transform: translateY(-1px);
 }
 
 .search-input::placeholder {
-  color: #999;
+  color: #9fa8da;
 }
 
-.results-count {
-  margin-top: 12px;
-  color: #777;
+.clear-button {
+  position: absolute;
+  right: 16px;
+  background: none;
+  border: none;
+  color: #9fa8da;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.clear-button:hover {
+  background: #f5f5f5;
+  color: #5c6bc0;
+}
+
+.results-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.results-count,
+.total-count {
+  color: #5c6bc0;
   font-size: 14px;
+  font-weight: 500;
 }
 
+/* Loading State */
+.loading-state {
+  text-align: center;
+  padding: 80px 20px;
+  color: #5c6bc0;
+}
+
+.spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid #e8eaf6;
+  border-top: 4px solid #5c6bc0;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 24px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Error State */
+.error-state {
+  text-align: center;
+  padding: 60px 20px;
+  background: linear-gradient(135deg, #ffebee, #fce4ec);
+  border: 2px solid #f8bbd9;
+  border-radius: 16px;
+  color: #c2185b;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.error-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.retry-button {
+  margin-top: 20px;
+  padding: 12px 32px;
+  background: linear-gradient(135deg, #c2185b, #d81b60);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.retry-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(194, 24, 91, 0.3);
+}
+
+/* Empty States */
+.empty-state,
+.no-articles {
+  text-align: center;
+  padding: 80px 20px;
+  color: #5c6bc0;
+  background: linear-gradient(135deg, #e8eaf6, #f3e5f5);
+  border-radius: 16px;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.empty-icon {
+  font-size: 64px;
+  margin-bottom: 20px;
+  opacity: 0.8;
+}
+
+.empty-state h3,
+.no-articles h3 {
+  margin: 0 0 12px 0;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.empty-state p,
+.no-articles p {
+  margin: 0 0 24px 0;
+  font-size: 16px;
+  opacity: 0.8;
+}
+
+.clear-search {
+  padding: 12px 28px;
+  background: linear-gradient(135deg, #5c6bc0, #3949ab);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.clear-search:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(92, 107, 192, 0.3);
+}
+
+/* Articles Grid */
 .articles-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 24px;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 32px;
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 1200px) {
   .articles-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 24px;
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .articles-grid {
     grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  .container {
+    padding: 24px 16px;
+  }
+  
+  .filter-heading {
+    font-size: 24px;
   }
 }
 
 .article-card {
-  background: #fff;
-  border-radius: 8px;
+  background: white;
+  border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   cursor: pointer;
   display: flex;
   flex-direction: column;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: all 0.4s ease;
+  border: 1px solid #f0f0f0;
+  position: relative;
 }
 
 .article-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  transform: translateY(-8px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
 }
 
-:host ::ng-deep .highlight {
-  background-color: #ffeb3b;
-  padding: 2px 2px;
+.article-card:focus {
+  outline: 3px solid #5c6bc0;
+  outline-offset: 2px;
 }
 
 .card-image {
   width: 100%;
-  height: 200px;
+  height: 220px;
   overflow: hidden;
-  background: #f5f5f5;
+  background: linear-gradient(135deg, #1a237e, #4a148c);
+  position: relative;
 }
 
 .card-image img {
@@ -103,53 +264,119 @@
   height: 100%;
   object-fit: cover;
   display: block;
+  transition: transform 0.4s ease;
+}
+
+.article-card:hover .card-image img {
+  transform: scale(1.1);
+}
+
+.featured-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: linear-gradient(135deg, #ff9800, #f57c00);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 8px rgba(255, 152, 0, 0.3);
 }
 
 .card-body {
-  padding: 20px;
+  padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
+  flex: 1;
 }
 
 .meta {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .date {
-  color: #666;
+  color: #5c6bc0;
   font-size: 14px;
+  font-weight: 600;
+}
+
+.news-site {
+  background: #e8eaf6;
+  color: #3949ab;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .title {
   margin: 0;
-  font-size: 18px;
+  font-size: 20px;
   line-height: 1.4;
-  color: #222;
-  font-weight: 500;
-}
-
-.excerpt {
-  margin: 0;
-  color: #666;
-  font-size: 14px;
-  line-height: 1.6;
-  min-height: 60px;
+  color: #1a237e;
+  font-weight: 700;
   display: -webkit-box;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
-.read-more {
-  margin-top: auto;
-  color: #222;
-  font-weight: 500;
-  font-size: 14px;
+.excerpt {
+  margin: 0;
+  color: #546e7a;
+  font-size: 15px;
+  line-height: 1.6;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  flex: 1;
 }
 
-/* highlight style used by highlightMatches() */
-.highlight {
-  background-color: #ffeb3b;
+.card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.read-more {
+  color: #5c6bc0;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.article-card:hover .read-more {
+  color: #3949ab;
+  transform: translateX(4px);
+}
+
+/* Highlight Styles */
+:host ::ng-deep .highlight {
+  background: linear-gradient(135deg, #ffeb3b, #ffd54f);
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-weight: 700;
+  color: #1a237e;
+}
+
+mark.highlight {
+  background: linear-gradient(135deg, #ffeb3b, #ffd54f) !important;
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-weight: 700;
+  color: #1a237e;
 }

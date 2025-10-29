@@ -1,4 +1,5 @@
 <div class="container">
+  <!-- Filter Section -->
   <div class="filter-section">
     <h2 class="filter-heading">Filter by keywords</h2>
     <div class="search-container">
@@ -10,32 +11,94 @@
         type="text"
         [(ngModel)]="searchText" 
         (input)="filterArticles()"
-        placeholder="The most successful IT companies in 2020"
+        placeholder="Search for space news, missions, or agencies..."
         class="search-input"
+        aria-label="Search articles"
       >
+      <button *ngIf="searchText" class="clear-button" (click)="clearSearch()" aria-label="Clear search">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
     </div>
-    <div class="results-count" *ngIf="searchText">
-      Results: {{ filteredArticles.length }}
+    
+    <div class="results-info">
+      <div class="results-count" *ngIf="searchText">
+        Found {{ filteredArticles.length }} result{{ filteredArticles.length !== 1 ? 's' : '' }} for "{{ searchText }}"
+      </div>
+      <div class="total-count" *ngIf="!searchText && !loading && !error">
+        Showing {{ filteredArticles.length }} space article{{ filteredArticles.length !== 1 ? 's' : '' }}
+      </div>
     </div>
   </div>
 
-  <div class="articles-grid">
-    <div class="article-card" *ngFor="let article of filteredArticles" (click)="navigateToArticle(article)">
+  <!-- Loading State -->
+  <div *ngIf="loading" class="loading-state">
+    <div class="spinner"></div>
+    <p>Loading space news...</p>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="error && !loading" class="error-state">
+    <div class="error-icon">⚠️</div>
+    <p>{{ error }}</p>
+    <button class="retry-button" (click)="retryLoad()">
+      Try Again
+    </button>
+  </div>
+
+  <!-- Empty Search State -->
+  <div *ngIf="!loading && !error && filteredArticles.length === 0 && searchText" class="empty-state">
+    <div class="empty-icon">🔍</div>
+    <h3>No results found</h3>
+    <p>No articles match "{{ searchText }}". Try different keywords.</p>
+    <button class="clear-search" (click)="clearSearch()">
+      Show All Articles
+    </button>
+  </div>
+
+  <!-- No Articles State -->
+  <div *ngIf="!loading && !error && articles.length === 0 && !searchText" class="no-articles">
+    <div class="empty-icon">📰</div>
+    <h3>No articles available</h3>
+    <p>Check back later for the latest space news.</p>
+  </div>
+
+  <!-- Articles Grid -->
+  <div *ngIf="!loading && !error && filteredArticles.length > 0" class="articles-grid">
+    <article 
+      class="article-card" 
+      *ngFor="let article of filteredArticles" 
+      (click)="navigateToArticle(article)"
+      tabindex="0"
+      (keydown.enter)="navigateToArticle(article)"
+      (keydown.space)="navigateToArticle(article); $event.preventDefault()"
+    >
       <div class="card-image">
-        <img [src]="article.image_url || 'https://via.placeholder.com/400x200'" alt="{{article.title}}">
+        <img 
+          [src]="article.imageUrl" 
+          [alt]="article.title"
+          loading="lazy"
+          (error)="article.imageUrl = 'https://via.placeholder.com/400x200/1a237e/ffffff?text=Space+News'"
+        >
+        <div *ngIf="article.featured" class="featured-badge">Featured</div>
       </div>
 
       <div class="card-body">
         <div class="meta">
-          <span class="date">{{ article.date }}</span>
+          <span class="date">{{ article.displayDate }}</span>
+          <span class="news-site">{{ article.news_site }}</span>
         </div>
 
         <h2 class="title" [innerHTML]="highlightMatches(article.title)"></h2>
 
-        <p class="excerpt" [innerHTML]="highlightMatches(article.summary | truncate:100)"></p>
+        <p class="excerpt" [innerHTML]="highlightMatches(article.summary | truncate:120)"></p>
 
-        <div class="read-more">Read more →</div>
+        <div class="card-footer">
+          <span class="read-more">Read full article →</span>
+        </div>
       </div>
-    </div>
+    </article>
   </div>
 </div>
