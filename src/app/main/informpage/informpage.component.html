@@ -1,0 +1,21 @@
+<div class="article-wrapper">
+  <div class="background-blur" *ngIf="article" [style.background-image]="'url(' + article.image_url + ')'"></div>
+  
+  <div class="article-container">
+    <div class="article-card" *ngIf="article">
+      <div class="article-meta">
+        <span class="article-date">{{ article.date }}</span>
+      </div>
+      
+      <h1 class="article-title" [innerHTML]="highlightHtml(article.title)"></h1>
+      
+      <div class="article-content">
+        <p>{{ article.summary || 'No summary available.' }}</p>
+      </div>
+
+      <a routerLink="/" class="back-link">← Back to homepage</a>
+    </div>
+    
+    <div class="loading" *ngIf="!article">Loading...</div>
+  </div>
+</div>
