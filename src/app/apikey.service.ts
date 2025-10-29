@@ -10,8 +10,8 @@ export class ApikeyService {
 
   constructor(private http: HttpClient) {}
 
-  getArticles(limit = 6): Observable<any[]> {
-    return this.http.get<any[]>(`${this.base}/articles?_limit=${limit}`);
+  getArticles(limit = 6): Observable<any> {
+    return this.http.get<any>(`${this.base}/articles?limit=${limit}`);
   }
 
   getArticle(id: string): Observable<any> {
