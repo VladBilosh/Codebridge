@@ -11,5 +11,10 @@ export async function netlifyCommonEngineHandler(request: Request, context: any)
   //   return Response.json({ message: 'Hello from the API' });
   // }
 
-  return await render(commonEngine);
+  try {
+    return await render(commonEngine);
+  } catch (error) {
+    console.error('SSR render failed:', error);
+    return new Response('Internal Server Error', { status: 500 });
+  }
 }
