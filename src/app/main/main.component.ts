@@ -1,7 +1,8 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, Inject, PLATFORM_ID } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { isPlatformBrowser } from '@angular/common';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { finalize } from 'rxjs/operators';
 import { TruncatePipe } from '../truncate.pipe';
@@ -37,10 +38,14 @@ export class MainComponent implements OnInit {
   constructor(
     private router: Router,
     private sanitizer: DomSanitizer,
-    private sf: ApikeyService
+    private sf: ApikeyService,
+    @Inject(PLATFORM_ID) private platformId: Object
   ) {}
 
   ngOnInit() {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
     this.loading = true;
     this.sf.getArticles(6)
       .pipe(finalize(() => {
