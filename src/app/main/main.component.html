@@ -10,7 +10,7 @@
       <input 
         type="text"
         [(ngModel)]="searchText" 
-        (ngModelChange)="onSearchChange($event)"
+        (ngModelChange)="filterArticles()"
         placeholder="Search for space news, missions, or agencies..."
         class="search-input"
         aria-label="Search articles"
@@ -22,51 +22,18 @@
         </svg>
       </button>
     </div>
-    
     <div class="results-info">
       <div class="results-count" *ngIf="searchText">
         Found {{ filteredArticles.length }} result{{ filteredArticles.length !== 1 ? 's' : '' }} for "{{ searchText }}"
       </div>
-      <div class="total-count" *ngIf="!searchText && !loading && !error">
+      <div class="total-count" *ngIf="!searchText && !loading">
         Showing {{ filteredArticles.length }} space article{{ filteredArticles.length !== 1 ? 's' : '' }}
       </div>
     </div>
   </div>
 
-  <!-- Loading State -->
-  <div *ngIf="loading" class="loading-state">
-    <div class="spinner"></div>
-    <p>Loading space news...</p>
-  </div>
-
-  <!-- Error State -->
-  <div *ngIf="error && !loading" class="error-state">
-    <div class="error-icon">⚠️</div>
-    <p>{{ error }}</p>
-    <button class="retry-button" (click)="retryLoad()">
-      Try Again
-    </button>
-  </div>
-
-  <!-- Empty Search State -->
-  <div *ngIf="!loading && !error && filteredArticles.length === 0 && searchText" class="empty-state">
-    <div class="empty-icon">🔍</div>
-    <h3>No results found</h3>
-    <p>No articles match "{{ searchText }}". Try different keywords.</p>
-    <button class="clear-search" (click)="clearSearch()">
-      Show All Articles
-    </button>
-  </div>
-
-  <!-- No Articles State -->
-  <div *ngIf="!loading && !error && articles.length === 0 && !searchText" class="no-articles">
-    <div class="empty-icon">📰</div>
-    <h3>No articles available</h3>
-    <p>Check back later for the latest space news.</p>
-  </div>
-
   <!-- Articles Grid -->
-  <div *ngIf="!loading && !error && filteredArticles.length > 0" class="articles-grid">
+  <div class="articles-grid">
     <article 
       class="article-card" 
       *ngFor="let article of filteredArticles" 
@@ -77,26 +44,21 @@
     >
       <div class="card-image">
         <img 
-          [src]="article.imageUrl" 
+          [src]="article.image_url" 
           [alt]="article.title"
           loading="lazy"
-          (error)="article.imageUrl = 'https://via.placeholder.com/400x200/1a237e/ffffff?text=Space+News'"
+          (error)="article.image_url = 'https://via.placeholder.com/400x200/1a237e/ffffff?text=Space+News'"
         >
         <div *ngIf="article.featured" class="featured-badge">Featured</div>
       </div>
-
       <div class="card-body">
         <div class="meta">
-          <span class="date">{{ article.displayDate }}</span>
-          <span class="news-site">{{ article.news_site }}</span>
+          <span class="date">{{ article.date }}</span>
         </div>
-
         <h2 class="title" [innerHTML]="highlightMatches(article.title)"></h2>
-
         <p class="excerpt" [innerHTML]="highlightMatches(article.summary)"></p>
-
         <div class="card-footer">
-          <span class="read-more">Read full article →</span>
+          <span class="read-more">Read more →</span>
         </div>
       </div>
     </article>

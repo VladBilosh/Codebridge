@@ -4,7 +4,6 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MainComponent } from './main/main.component';
 import { TruncatePipe } from './truncate.pipe';
-import { HttpClientModule } from '@angular/common/http';
 
 @Component({
   selector: 'app-root',
@@ -13,7 +12,8 @@ import { HttpClientModule } from '@angular/common/http';
     RouterOutlet,
     CommonModule,
     FormsModule,
-    HttpClientModule
+    MainComponent,
+    TruncatePipe
   ],
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.css']

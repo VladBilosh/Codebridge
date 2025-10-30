@@ -1,17 +1,25 @@
-import { Component, OnInit, Inject, PLATFORM_ID } from '@angular/core';
-import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { Component, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
-import { finalize, debounceTime, distinctUntilChanged, switchMap, catchError, map } from 'rxjs/operators';
-import { Subject, of } from 'rxjs';
+import { finalize } from 'rxjs/operators';
 import { TruncatePipe } from '../truncate.pipe';
-import { ApikeyService, Article } from '../apikey.service';
+import { ApikeyService } from '../apikey.service';
 
-interface DisplayArticle extends Article {
-  displayDate: string;
-  imageUrl: string;
+interface Article {
+  id: string;
+  title: string;
+  summary: string;
+  image_url?: string;
+  featured: boolean;
+  date?: string;
 }
+
+type ScoredArticle = Article & {
+  titleMatches: number;
+  descriptionMatches: number;
+};
 
 @Component({
   selector: 'app-main',
@@ -21,210 +29,124 @@ interface DisplayArticle extends Article {
   styleUrls: ['./main.component.css']
 })
 export class MainComponent implements OnInit {
-  articles: DisplayArticle[] = [];
-  filteredArticles: DisplayArticle[] = [];
+  articles: Article[] = [];
+  filteredArticles: ScoredArticle[] = [];
   searchText: string = '';
   loading = false;
-  error: string = '';
-  private search$ = new Subject<string>();
 
   constructor(
     private router: Router,
     private sanitizer: DomSanitizer,
-    private apiService: ApikeyService,
-    @Inject(PLATFORM_ID) private platformId: Object
+    private sf: ApikeyService
   ) {}
 
   ngOnInit() {
-    if (isPlatformBrowser(this.platformId)) {
-      this.loadArticles();
-      this.setupSearch();
-    }
-  }
-
-  loadArticles() {
     this.loading = true;
-    this.error = '';
-    
-    this.apiService.getArticles(18) // fetch a fuller first page
-      .pipe(finalize(() => { this.loading = false; }))
+    this.sf.getArticles(18)
+      .pipe(finalize(() => {
+        this.loading = false;
+        // Ensure filteredArticles is initialized if API returns nothing
+        if (!this.filteredArticles || this.filteredArticles.length === 0) {
+          this.filteredArticles = this.articles.map(a => ({ ...a, titleMatches: 0, descriptionMatches: 0 }));
+        }
+      }))
       .subscribe({
-        next: (articles: Article[]) => {
-          console.log('Raw articles from API:', articles);
-          
-          if (!articles || articles.length === 0) {
-            this.error = 'No articles found.';
+        next: (response: any) => {
+          // Accepts array or { results: array }
+          const items = response?.results || response || [];
+          if (!Array.isArray(items)) {
             this.articles = [];
             this.filteredArticles = [];
             return;
           }
-
-          this.articles = articles.map(article => this.transformArticle(article));
-          this.filteredArticles = [...this.articles];
-          
-          console.log('Transformed articles:', this.articles);
+          this.articles = items.map(i => {
+            let formattedDate = '';
+            if (i.published_at) {
+              const date = new Date(i.published_at);
+              const options: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'short', day: 'numeric' };
+              formattedDate = date.toLocaleDateString('en-US', options);
+              const parts = formattedDate.split(' ');
+              formattedDate = `${parts[1]} ${parts[0]}, ${parts[2]}`;
+            }
+            return {
+              id: i.id,
+              title: i.title || '',
+              summary: i.summary || '',
+              image_url: i.image_url || '',
+              featured: i.featured || false,
+              date: formattedDate
+            };
+          });
+          // Always initialize filteredArticles with all articles initially
+          this.filteredArticles = this.articles.map(a => ({ ...a, titleMatches: 0, descriptionMatches: 0 }));
         },
-        error: (err: any) => {
-          console.error('API Error:', err);
-          this.error = 'Failed to load articles. Please check your connection.';
+        error: () => {
           this.articles = [];
           this.filteredArticles = [];
         }
       });
   }
 
-  private prioritizeAndSortArticles(articles: Article[], keywords: string): DisplayArticle[] {
-    if (!keywords || !keywords.trim()) {
-      return articles.map(a => this.transformArticle(a));
+  filterArticles() {
+    const raw = (this.searchText || '').trim();
+    if (!raw) {
+      this.filteredArticles = this.articles.map(a => ({ ...a, titleMatches: 0, descriptionMatches: 0 }));
+      return;
     }
-    const terms = keywords.toLowerCase().split(/\s+/).filter(Boolean);
-    const isIn = (field: string | undefined) => field ? terms.some(kw => field.toLowerCase().includes(kw)) : false;
-
-    const toScore = (article: Article) => {
-      // 2 = title match, 1 = description (summary) match, 0 = none
-      if (isIn(article.title)) return 2;
-      if (isIn(article.summary)) return 1;
-      return 0;
-    };
-    const scored = articles.map(a => ({ a, score: toScore(a) }))
-      .filter(obj => obj.score > 0);
-    scored.sort((x, y) => y.score - x.score);
-    return scored.map(x => this.transformArticle(x.a));
-  }
-
-  private setupSearch() {
-    this.search$
-      .pipe(
-        debounceTime(350),
-        distinctUntilChanged(),
-        switchMap((term: string) => {
-          const trimmed = (term || '').trim();
-          this.loading = true;
-          this.error = '';
-          if (!trimmed) {
-            return this.apiService.getArticles(18).pipe(catchError(() => of([])),
-              // Just do direct mapping; no prioritization
-              map(arts => this.prioritizeAndSortArticles(arts, ''))
-            );
-          }
-          return this.apiService.searchArticles(trimmed, 18).pipe(catchError(() => of([])),
-            map(arts => this.prioritizeAndSortArticles(arts, trimmed))
-          );
-        }),
-        finalize(() => { this.loading = false; })
-      )
-      .subscribe((displayArticles: DisplayArticle[]) => {
-        this.articles = displayArticles;
-        this.filteredArticles = [...this.articles];
+    const keywords = raw.toLowerCase().split(/\s+/).filter((k: string) => k.length > 0);
+    this.filteredArticles = this.articles
+      .map(article => ({
+        ...article,
+        titleMatches: this.countMatches(article.title, keywords),
+        descriptionMatches: this.countMatches(article.summary, keywords)
+      }))
+      .filter(article => article.titleMatches > 0 || article.descriptionMatches > 0)
+      .sort((a, b) => {
+        if (a.titleMatches !== b.titleMatches) {
+          return b.titleMatches - a.titleMatches;
+        }
+        return b.descriptionMatches - a.descriptionMatches;
       });
   }
 
-  onSearchChange(value: string) {
-    this.searchText = value;
-    this.search$.next(value);
+  countMatches(text: string | undefined | null, keywords: string[]): number {
+    if (!text) return 0;
+    const lower = text.toLowerCase();
+    return keywords.reduce((count: number, keyword: string) => count + (lower.includes(keyword) ? 1 : 0), 0);
   }
 
-  private transformArticle(article: Article): DisplayArticle {
-    // Format date
-    let displayDate = '';
-    if (article.published_at) {
-      try {
-        const date = new Date(article.published_at);
-        displayDate = date.toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric'
-        });
-      } catch (e) {
-        console.warn('Invalid date format:', article.published_at);
-        displayDate = 'Recent';
-      }
-    } else {
-      displayDate = 'Recent';
-    }
-
-    // Handle image URL
-    let imageUrl = article.image_url;
-    if (!imageUrl || imageUrl.includes('placeholder')) {
-      // Use themed placeholder images based on content
-      const placeholders = [
-        'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=400&h=200&fit=crop',
-        'https://images.unsplash.com/photo-1446776653964-20c1d3a81b06?w=400&h=200&fit=crop',
-        'https://images.unsplash.com/photo-1505506874110-6a7a69069a08?w=400&h=200&fit=crop',
-        'https://images.unsplash.com/photo-1462331940025-496dfbfc7564?w=400&h=200&fit=crop',
-        'https://images.unsplash.com/photo-1446776877081-d282a0f896e2?w=400&h=200&fit=crop',
-        'https://images.unsplash.com/photo-1464802686167-b939a6910659?w=400&h=200&fit=crop'
-      ];
-      imageUrl = placeholders[Math.floor(Math.random() * placeholders.length)];
-    }
-
-    // Truncate summary to 100 chars for card
-    let truncatedSummary = (article.summary || '').length > 100 ? article.summary.substring(0, 100) + '…' : (article.summary || '');
-    return {
-      ...article,
-      displayDate,
-      imageUrl,
-      summary: truncatedSummary // override summary for card view
-    };
-  }
-
-  filterArticles() {
-    const searchTerm = (this.searchText || '').trim().toLowerCase();
-    
-    if (!searchTerm) {
-      this.filteredArticles = [...this.articles];
-      return;
-    }
-
-    this.filteredArticles = this.articles.filter(article => {
-      const titleMatch = article.title.toLowerCase().includes(searchTerm);
-      const summaryMatch = article.summary.toLowerCase().includes(searchTerm);
-      const siteMatch = article.news_site.toLowerCase().includes(searchTerm);
-      
-      return titleMatch || summaryMatch || siteMatch;
-    });
+  private escapeHtml(input: string | undefined | null): string {
+    if (!input) return '';
+    return input
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
   }
 
   highlightMatches(text: string | undefined | null): SafeHtml {
-    if (!text) {
-      return this.sanitizer.bypassSecurityTrustHtml('<em>No content</em>');
+    const rawSearch = (this.searchText || '').trim();
+    if (!text) return this.sanitizer.bypassSecurityTrustHtml('');
+    let escaped = this.escapeHtml(text);
+    if (!rawSearch) {
+      return this.sanitizer.bypassSecurityTrustHtml(escaped);
     }
-
-    const searchTerm = (this.searchText || '').trim();
-    if (!searchTerm) {
-      return this.sanitizer.bypassSecurityTrustHtml(text);
-    }
-    // Accept multiple keywords
-    const terms = searchTerm.split(/\s+/).filter(Boolean).map(this.escapeRegex);
-    if (!terms.length) return this.sanitizer.bypassSecurityTrustHtml(text);
-    const regex = new RegExp(`(${terms.join('|')})`, 'gi');
-    const escapedText = this.escapeHtml(text);
-    const highlighted = escapedText.replace(regex, '<mark class="highlight">$1</mark>');
-    return this.sanitizer.bypassSecurityTrustHtml(highlighted);
+    const keywords = rawSearch.toLowerCase().split(/\s+/).filter((k: string) => k.length > 0);
+    keywords.forEach(k => {
+      const escK = k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(`(${escK})`, 'gi');
+      escaped = escaped.replace(regex, '<span class="highlight">$1</span>');
+    });
+    return this.sanitizer.bypassSecurityTrustHtml(escaped);
   }
 
-  private escapeHtml(text: string): string {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-  }
-
-  private escapeRegex(text: string): string {
-    return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  }
-
-  navigateToArticle(article: DisplayArticle) {
-    console.log('Navigating to article:', article.id);
-    // Using article ID for navigation
+  navigateToArticle(article: Article) {
     this.router.navigate(['/article', article.id]);
-  }
-
-  retryLoad() {
-    this.loadArticles();
   }
 
   clearSearch() {
     this.searchText = '';
-    this.filteredArticles = [...this.articles];
+    this.filterArticles();
   }
 }
