@@ -3,7 +3,8 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
-import { finalize } from 'rxjs/operators';
+import { finalize, debounceTime, distinctUntilChanged, switchMap, catchError, map } from 'rxjs/operators';
+import { Subject, of } from 'rxjs';
 import { TruncatePipe } from '../truncate.pipe';
 import { ApikeyService, Article } from '../apikey.service';
 
@@ -25,6 +26,7 @@ export class MainComponent implements OnInit {
   searchText: string = '';
   loading = false;
   error: string = '';
+  private search$ = new Subject<string>();
 
   constructor(
     private router: Router,
@@ -36,6 +38,7 @@ export class MainComponent implements OnInit {
   ngOnInit() {
     if (isPlatformBrowser(this.platformId)) {
       this.loadArticles();
+      this.setupSearch();
     }
   }
 
@@ -43,7 +46,7 @@ export class MainComponent implements OnInit {
     this.loading = true;
     this.error = '';
     
-    this.apiService.getArticles(12) // Increased limit for better display
+    this.apiService.getArticles(18) // fetch a fuller first page
       .pipe(finalize(() => { this.loading = false; }))
       .subscribe({
         next: (articles: Article[]) => {
@@ -68,6 +71,57 @@ export class MainComponent implements OnInit {
           this.filteredArticles = [];
         }
       });
+  }
+
+  private prioritizeAndSortArticles(articles: Article[], keywords: string): DisplayArticle[] {
+    if (!keywords || !keywords.trim()) {
+      return articles.map(a => this.transformArticle(a));
+    }
+    const terms = keywords.toLowerCase().split(/\s+/).filter(Boolean);
+    const isIn = (field: string | undefined) => field ? terms.some(kw => field.toLowerCase().includes(kw)) : false;
+
+    const toScore = (article: Article) => {
+      // 2 = title match, 1 = description (summary) match, 0 = none
+      if (isIn(article.title)) return 2;
+      if (isIn(article.summary)) return 1;
+      return 0;
+    };
+    const scored = articles.map(a => ({ a, score: toScore(a) }))
+      .filter(obj => obj.score > 0);
+    scored.sort((x, y) => y.score - x.score);
+    return scored.map(x => this.transformArticle(x.a));
+  }
+
+  private setupSearch() {
+    this.search$
+      .pipe(
+        debounceTime(350),
+        distinctUntilChanged(),
+        switchMap((term: string) => {
+          const trimmed = (term || '').trim();
+          this.loading = true;
+          this.error = '';
+          if (!trimmed) {
+            return this.apiService.getArticles(18).pipe(catchError(() => of([])),
+              // Just do direct mapping; no prioritization
+              map(arts => this.prioritizeAndSortArticles(arts, ''))
+            );
+          }
+          return this.apiService.searchArticles(trimmed, 18).pipe(catchError(() => of([])),
+            map(arts => this.prioritizeAndSortArticles(arts, trimmed))
+          );
+        }),
+        finalize(() => { this.loading = false; })
+      )
+      .subscribe((displayArticles: DisplayArticle[]) => {
+        this.articles = displayArticles;
+        this.filteredArticles = [...this.articles];
+      });
+  }
+
+  onSearchChange(value: string) {
+    this.searchText = value;
+    this.search$.next(value);
   }
 
   private transformArticle(article: Article): DisplayArticle {
@@ -104,10 +158,13 @@ export class MainComponent implements OnInit {
       imageUrl = placeholders[Math.floor(Math.random() * placeholders.length)];
     }
 
+    // Truncate summary to 100 chars for card
+    let truncatedSummary = (article.summary || '').length > 100 ? article.summary.substring(0, 100) + '…' : (article.summary || '');
     return {
       ...article,
       displayDate,
-      imageUrl
+      imageUrl,
+      summary: truncatedSummary // override summary for card view
     };
   }
 
@@ -137,12 +194,12 @@ export class MainComponent implements OnInit {
     if (!searchTerm) {
       return this.sanitizer.bypassSecurityTrustHtml(text);
     }
-
+    // Accept multiple keywords
+    const terms = searchTerm.split(/\s+/).filter(Boolean).map(this.escapeRegex);
+    if (!terms.length) return this.sanitizer.bypassSecurityTrustHtml(text);
+    const regex = new RegExp(`(${terms.join('|')})`, 'gi');
     const escapedText = this.escapeHtml(text);
-    const escapedSearch = this.escapeRegex(searchTerm);
-    const regex = new RegExp(`(${escapedSearch})`, 'gi');
     const highlighted = escapedText.replace(regex, '<mark class="highlight">$1</mark>');
-    
     return this.sanitizer.bypassSecurityTrustHtml(highlighted);
   }
 

@@ -33,11 +33,13 @@ export class ApikeyService {
   constructor(private http: HttpClient) {}
 
   getArticles(limit: number = 6): Observable<Article[]> {
-    return this.http.get<ApiResponse>(`${this.baseUrl}/articles/?limit=${limit}`)
+    // Ask for most recent first; some environments were returning an empty default page
+    const url = `${this.baseUrl}/articles/?limit=${limit}&ordering=-published_at`;
+    return this.http.get<ApiResponse>(url)
       .pipe(
-        map(response => {
-          console.log('API Response:', response);
-          return response.results || [];
+        map((response: ApiResponse) => {
+          const results = Array.isArray(response?.results) ? response.results : [];
+          return results.filter(Boolean);
         })
       );
   }
@@ -49,11 +51,10 @@ export class ApikeyService {
   searchArticles(search: string, limit: number = 6): Observable<Article[]> {
     const params = {
       limit: limit.toString(),
-      search: search
-    };
+      search: search,
+      ordering: '-published_at'
+    } as any;
     return this.http.get<ApiResponse>(`${this.baseUrl}/articles/`, { params })
-      .pipe(
-        map(response => response.results || [])
-      );
+      .pipe(map(response => response?.results || []));
   }
 }

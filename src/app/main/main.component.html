@@ -10,7 +10,7 @@
       <input 
         type="text"
         [(ngModel)]="searchText" 
-        (input)="filterArticles()"
+        (ngModelChange)="onSearchChange($event)"
         placeholder="Search for space news, missions, or agencies..."
         class="search-input"
         aria-label="Search articles"
@@ -93,7 +93,7 @@
 
         <h2 class="title" [innerHTML]="highlightMatches(article.title)"></h2>
 
-        <p class="excerpt" [innerHTML]="highlightMatches(article.summary | truncate:120)"></p>
+        <p class="excerpt" [innerHTML]="highlightMatches(article.summary)"></p>
 
         <div class="card-footer">
           <span class="read-more">Read full article →</span>
